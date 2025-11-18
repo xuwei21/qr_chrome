@@ -1,3 +1,4 @@
+/* sidepanel.css */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -5,65 +6,53 @@
 }
 
 html, body {
-  width: 500px;
-  /* 设置最小高度，确保即使没有内容也能正常显示 */
-  min-height: 150px;
-  /* 设置最大高度为Chrome允许的最大值 */
-  max-height: 600px;
+  width: 100%;
+  height: 100dvh;         /* 自适应浏览器高度 */
+  min-height: 100dvh;
+  overflow: hidden;       /* 由内部滚动区域负责滚动 */
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background-color: #f5f5f5;
   color: #333;
-  /* 让body使用flex布局，便于管理内部元素 */
   display: flex;
   flex-direction: column;
 }
 
 .container {
-  padding: 15px;
-  /* 容器使用flex布局，填充可用空间 */
+  padding: 12px;
   display: flex;
   flex-direction: column;
   flex: 1;
-  /* 确保容器不会超出body */
-  min-height: 0;
+  min-height: 0;          /* 避免 flex 子项超出 */
 }
 
 h1 {
-  font-size: 18px;
-  margin-bottom: 15px;
+  font-size: 16px;
+  margin-bottom: 12px;
   color: #2c3e50;
   text-align: center;
-  /* 标题固定，不随内容滚动 */
   flex-shrink: 0;
 }
 
 .item-list {
-  margin-bottom: 15px;
-  /* 列表区域可滚动 */
+  margin-bottom: 12px;
   overflow-y: auto;
-  /* 列表区域占据剩余空间 */
   flex: 1;
-  /* 确保列表区域不会无限扩展 */
   min-height: 0;
-  /* 添加一些内边距，使滚动条不贴边 */
-  padding-right: 5px;
+  padding-right: 4px;
 }
 
-/* 自定义滚动条样式 */
+/* 滚动条样式（可选） */
 .item-list::-webkit-scrollbar {
   width: 6px;
 }
-
 .item-list::-webkit-scrollbar-track {
   background: #f1f1f1;
   border-radius: 3px;
 }
-
 .item-list::-webkit-scrollbar-thumb {
   background: #c1c1c1;
   border-radius: 3px;
 }
-
 .item-list::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
 }
@@ -73,15 +62,14 @@ h1 {
   border-radius: 8px;
   padding: 12px;
   margin-bottom: 10px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  transition: box-shadow 0.2s ease;
   display: flex;
   align-items: flex-start;
-  gap: 15px;
+  gap: 12px;
 }
-
 .item:hover {
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
 
 .item-content {
@@ -100,22 +88,21 @@ h1 {
 .radio-group {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
 }
-
 .radio-group label {
   display: flex;
   align-items: center;
   font-size: 12px;
   cursor: pointer;
 }
-
 .radio-group input {
   margin-right: 4px;
 }
 
 .item-actions {
   display: flex;
-  gap: 5px;
+  gap: 6px;
 }
 
 .text-input {
@@ -124,25 +111,21 @@ h1 {
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 14px;
-  transition: border-color 0.3s;
+  transition: border-color 0.2s;
 }
-
 .text-input:focus {
   outline: none;
   border-color: #3498db;
 }
 
 .qr-container {
-  display: flex;
+  display: none;           /* 默认隐藏，输入后显示 */
   justify-content: center;
   align-items: center;
   width: 120px;
   height: 120px;
   min-width: 120px;
-  /* 默认隐藏，只有当有二维码时才显示 */
-  display: none;
 }
-
 .qr-container.has-qr {
   display: flex;
 }
@@ -162,7 +145,6 @@ h1 {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  /* 底部操作区域固定，不随内容滚动 */
   flex-shrink: 0;
 }
 
@@ -172,19 +154,19 @@ h1 {
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
-  transition: background-color 0.3s;
+  transition: opacity 0.2s;
 }
-
+.btn:hover {
+  opacity: 0.9;
+}
 .btn-delete {
   background-color: #e74c3c;
   color: white;
 }
-
 .btn-top {
   background-color: #3498db;
   color: white;
 }
-
 .btn-primary {
   background-color: #3498db;
   color: white;
@@ -194,10 +176,6 @@ h1 {
   cursor: pointer;
   width: 100%;
   font-size: 14px;
-}
-
-.btn:hover {
-  opacity: 0.9;
 }
 
 .empty-state {
