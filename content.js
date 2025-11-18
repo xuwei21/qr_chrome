@@ -6,7 +6,7 @@ if (window.__QR_PANEL_CONTENT_LOADED__) {
 }
 
 (() => {
-  const PANEL_WIDTH = 420;
+  const PANEL_WIDTH = 480;
   const HTML_PUSH_CLASS = 'ext-qr-panel-open';
   const PUSH_STYLE_ID = 'ext-qr-panel-push-style';
   const CONTAINER_ID = 'ext-qr-panel-container';
@@ -18,7 +18,7 @@ if (window.__QR_PANEL_CONTENT_LOADED__) {
     let styleEl = document.getElementById(PUSH_STYLE_ID);
     const css = `
       html.${HTML_PUSH_CLASS} {
-        margin-right: ${width}px !important;
+        margin-right: calc(${width}px + env(safe-area-inset-right));
         transition: margin-right 0.2s ease;
       }
     `;
@@ -37,6 +37,8 @@ if (window.__QR_PANEL_CONTENT_LOADED__) {
 
     const host = document.createElement('div');
     host.id = CONTAINER_ID;
+
+    // 基础定位与层级
     host.style.all = 'initial';
     host.style.position = 'fixed';
     host.style.top = '0';
@@ -46,26 +48,41 @@ if (window.__QR_PANEL_CONTENT_LOADED__) {
     host.style.zIndex = '2147483647';
     host.style.overflow = 'hidden';
     host.style.transition = 'width 0.2s ease';
+    host.style.willChange = 'width';
+
+    // 视觉：微投影，左侧分隔感更自然
+    host.style.boxShadow = 'rgba(0, 0, 0, 0.06) 0 0 0 1px, rgba(0, 0, 0, 0.18) -8px 0 24px';
+    host.style.background = 'transparent';
 
     const shadow = host.attachShadow({ mode: 'open' });
 
     const style = document.createElement('style');
     style.textContent = `
       :host { all: initial; }
+
       .frame {
         all: initial;
         display: block;
         width: 100%;
         height: 100%;
         border: 0;
+        background: transparent;
       }
+
+      /* 视觉分隔线：在暗色与浅色下都足够细腻 */
       .divider {
         position: absolute;
         left: 0;
         top: 0;
         bottom: 0;
         width: 1px;
-        background: rgba(0,0,0,0.08);
+        background: rgba(0, 0, 0, 0.08);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .divider {
+          background: rgba(255, 255, 255, 0.12);
+        }
       }
     `;
     shadow.appendChild(style);

@@ -46,7 +46,7 @@ function createItemElement(item, index) {
             <input type="radio" name="type-${index}" value="0" ${item.type === 0 ? 'checked' : ''}> 稿件
           </label>
           <label>
-            <input type="radio" name="type-${index}" value="1" ${item.type === 1 ? 'checked' : ''}> 用户
+            <input type="radio" name="type-${index}" value="1" ${item.type === 1 ? 'checked' : ''}> Mid
           </label>
           <label>
             <input type="radio" name="type-${index}" value="2" ${item.type === 2 ? 'checked' : ''}> 自定义
@@ -54,7 +54,7 @@ function createItemElement(item, index) {
         </div>
         <div class="item-actions">
           <button class="btn btn-delete">删除</button>
-          <button class="btn btn-top">置顶</button>
+          <button class="btn btn-top">上移</button>
         </div>
       </div>
       <input type="text" class="text-input" placeholder="输入内容..." value="${item.content || ''}">

@@ -1,134 +1,238 @@
 /* sidepanel.css */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+
+/* 设计令牌（浅色） */
+:root {
+  color-scheme: light dark;
+
+  /* 色彩系统 */
+  --brand: #4f46e5;           /* 品牌主色（靛蓝） */
+  --brand-600: #4f46e5;
+  --brand-700: #4338ca;
+  --brand-50: #eef2ff;
+
+  --bg: #f7f7f8;              /* 页面背景 */
+  --surface: #ffffff;          /* 卡片背景 */
+  --surface-2: #f2f3f5;        /* 次级表面/分组背景 */
+  --border: #e6e8eb;           /* 边框/分隔 */
+  --border-strong: #d6d9de;
+
+  --text: #1f2937;             /* 主文本 */
+  --text-subtle: #a9b1c2;      /* 次文本 */
+  --text-on-brand: #ffffff;    /* 品牌按钮文字 */
+
+  --danger: #ff0037;
+  --danger-700: #ff0037;
+
+  /* 阴影与圆角 */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.08);
+  --shadow-md: 0 6px 16px rgba(16,24,40,0.12);
+  --shadow-lg: 0 14px 28px rgba(16,24,40,0.18);
+
+  /* 动效 */
+  --easing: cubic-bezier(.2,.7,.2,1);
+  --duration: 200ms;
+
+  /* 尺寸 */
+  --gap-1: 4px;
+  --gap-2: 8px;
+  --gap-3: 12px;
+  --gap-4: 16px;
 }
 
+/* 深色主题覆盖 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0d10;
+    --surface: #0f1115;
+    --surface-2: #141821;
+    --border: #1e2530;
+    --border-strong: #293241;
+
+    --text: #e5e7eb;
+    --text-subtle: #9aa4b2;
+
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.6);
+    --shadow-md: 0 6px 16px rgba(0,0,0,0.55);
+    --shadow-lg: 0 14px 28px rgba(0,0,0,0.6);
+  }
+}
+
+/* 基础 Reset（精简） */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+img, svg { display: block; max-width: 100%; }
+
+/* 页面基线 */
 html, body {
   width: 100%;
-  height: 100dvh;         /* 自适应浏览器高度 */
-  min-height: 100dvh;
-  overflow: hidden;       /* 由内部滚动区域负责滚动 */
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f5f5f5;
-  color: #333;
+  height: 100svh;
+  min-height: 100svh;
+  overflow: hidden; /* 由内部滚动区域负责滚动 */
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  background: linear-gradient(180deg, var(--bg), color-mix(in oklab, var(--bg) 85%, #ffffff 15%));
+  color: var(--text);
   display: flex;
   flex-direction: column;
 }
 
+/* 容器 */
 .container {
-  padding: 12px;
+  padding: var(--gap-3);
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-height: 0;          /* 避免 flex 子项超出 */
+  min-height: 0; /* 避免 flex 子项溢出 */
+  gap: var(--gap-3);
 }
 
+/* 标题 */
 h1 {
   font-size: 16px;
-  margin-bottom: 12px;
-  color: #2c3e50;
+  font-weight: 600;
+  color: var(--text);
   text-align: center;
-  flex-shrink: 0;
+  letter-spacing: .2px;
+  padding: var(--gap-2) 0;
+  border-bottom: 1px solid var(--border);
 }
 
+/* 列表（滚动区） */
 .item-list {
-  margin-bottom: 12px;
   overflow-y: auto;
   flex: 1;
   min-height: 0;
-  padding-right: 4px;
+  padding-right: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-3);
 }
 
-/* 滚动条样式（可选） */
-.item-list::-webkit-scrollbar {
-  width: 6px;
-}
+/* 自定义滚动条 */
+.item-list::-webkit-scrollbar { width: 8px; }
 .item-list::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 3px;
+  background: transparent;
 }
 .item-list::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
+  background: color-mix(in oklab, var(--border-strong) 70%, #888 30%);
+  border-radius: 8px;
 }
 .item-list::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: color-mix(in oklab, var(--border-strong) 50%, #666 50%);
+}
+@supports (scrollbar-color: auto) {
+  .item-list { scrollbar-color: color-mix(in oklab, var(--border-strong) 70%, #888 30%) transparent; scrollbar-width: thin; }
 }
 
+/* 卡片项 */
 .item {
-  background-color: white;
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 10px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  transition: box-shadow 0.2s ease;
+  background-color: var(--surface);
+  border-radius: var(--radius-md);
+  padding: var(--gap-3);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: var(--gap-3);
+  transition: box-shadow var(--duration) var(--easing), border-color var(--duration) var(--easing), transform var(--duration) var(--easing);
 }
 .item:hover {
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-strong);
+  transform: translateZ(0); /* 提升渲染稳定性 */
 }
 
 .item-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--gap-3);
 }
 
 .item-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: var(--gap-2);
 }
 
+/* 单选分段（使用 :has 支持） */
 .radio-group {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-2);
+  background: var(--surface-2);
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  padding: 4px;
 }
 .radio-group label {
-  display: flex;
+  position: relative;
+  display: inline-flex;
   align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
   font-size: 12px;
+  color: var(--text-subtle);
   cursor: pointer;
+  user-select: none;
+  transition: color var(--duration) var(--easing), background-color var(--duration) var(--easing), transform var(--duration) var(--easing);
 }
+.radio-group label:hover { transform: translateY(-1px); }
 .radio-group input {
-  margin-right: 4px;
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.radio-group label:has(input:checked) {
+  background: var(--brand-50);
+  color: var(--brand-700);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--brand-600) 25%, #ffffff 75%);
 }
 
+/* 操作区 */
 .item-actions {
-  display: flex;
+  display: inline-flex;
   gap: 6px;
 }
 
+/* 输入框 */
 .text-input {
   width: 100%;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   font-size: 14px;
-  transition: border-color 0.2s;
+  color: var(--text);
+  background: color-mix(in oklab, var(--surface) 92%, white 8%);
+  transition: border-color var(--duration) var(--easing), box-shadow var(--duration) var(--easing), background-color var(--duration) var(--easing);
 }
-.text-input:focus {
+.text-input::placeholder { color: color-mix(in oklab, var(--text-subtle) 70%, #aaa 30%); }
+.text-input:hover {
+  border-color: var(--border-strong);
+}
+.text-input:focus-visible {
   outline: none;
-  border-color: #3498db;
+  border-color: var(--brand-600);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-600) 20%, #ffffff 80%);
+  background: var(--surface);
 }
 
+/* 右侧二维码区域 */
 .qr-container {
-  display: none;           /* 默认隐藏，输入后显示 */
+  display: none; /* 默认隐藏，输入后显示 */
   justify-content: center;
   align-items: center;
   width: 120px;
   height: 120px;
   min-width: 120px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
 }
-.qr-container.has-qr {
-  display: flex;
-}
+.qr-container.has-qr { display: flex; }
 
 .qr-code {
   display: flex;
@@ -136,51 +240,118 @@ h1 {
   align-items: center;
   width: 100%;
   height: 100%;
-  background-color: white;
-  border-radius: 4px;
-  border: 1px solid #eee;
+  background-color: var(--surface);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
 
+/* 页面底部操作区 */
 .actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  flex-shrink: 0;
+  gap: var(--gap-2);
+  padding-bottom: max(var(--gap-1), env(safe-area-inset-bottom));
 }
 
-.btn {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 4px;
+/* 按钮体系 */
+.btn, .btn-primary, .btn-top, .btn-delete {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 12px;
-  transition: opacity 0.2s;
+  font-size: 13px;
+  font-weight: 600;
+  transition: transform var(--duration) var(--easing),
+              box-shadow var(--duration) var(--easing),
+              background-color var(--duration) var(--easing),
+              border-color var(--duration) var(--easing),
+              color var(--duration) var(--easing);
+  line-height: 1.2;
+  user-select: none;
 }
-.btn:hover {
-  opacity: 0.9;
+.btn:hover,
+.btn-primary:hover,
+.btn-top:hover,
+.btn-delete:hover {
+  transform: translateY(-1px);
 }
-.btn-delete {
-  background-color: #e74c3c;
-  color: white;
+.btn:active,
+.btn-primary:active,
+.btn-top:active,
+.btn-delete:active {
+  transform: translateY(0);
 }
-.btn-top {
-  background-color: #3498db;
-  color: white;
-}
+
+/* 主要按钮（底部“添加新项”） */
 .btn-primary {
-  background-color: #3498db;
-  color: white;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
   width: 100%;
-  font-size: 14px;
+  padding: 10px 16px;
+  background-color: var(--brand-600);
+  color: var(--text-on-brand);
+  box-shadow: 0 4px 10px color-mix(in oklab, var(--brand-600) 25%, transparent 75%);
+  border-color: color-mix(in oklab, var(--brand-600) 60%, #000 40%);
+}
+.btn-primary:hover {
+  background-color: var(--brand-700);
+}
+.btn-primary:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--brand-600) 18%, #ffffff 82%),
+    0 6px 14px color-mix(in oklab, var(--brand-600) 25%, transparent 75%);
 }
 
+/* 次要按钮（置顶） */
+.btn-top {
+  background: color-mix(in oklab, var(--brand-50) 50%, var(--surface) 50%);
+  color: var(--brand-700);
+  border-color: color-mix(in oklab, var(--brand-600) 25%, var(--border) 75%);
+}
+.btn-top:hover {
+  background: var(--brand-50);
+  border-color: var(--brand-600);
+}
+.btn-top:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-600) 18%, #ffffff 82%);
+}
+
+/* 危险按钮（删除） */
+.btn-delete {
+  background-color: color-mix(in oklab, var(--danger) 14%, var(--surface) 86%);
+  color: color-mix(in oklab, var(--danger-700) 70%, #000 30%);
+  border-color: color-mix(in oklab, var(--danger) 24%, var(--border) 76%);
+}
+.btn-delete:hover {
+  background-color: color-mix(in oklab, var(--danger) 22%, var(--surface) 78%);
+  border-color: var(--danger);
+  color: var(--danger-700);
+}
+.btn-delete:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--danger) 20%, #ffffff 80%);
+}
+
+/* 空状态 */
 .empty-state {
   text-align: center;
-  padding: 20px;
-  color: #7f8c8d;
-  font-style: italic;
+  padding: 24px;
+  color: var(--text-subtle);
+  font-style: normal;
+  font-size: 13px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--surface) 90%, #fff 10%);
+}
+
+/* 减少动画偏好 */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 }
