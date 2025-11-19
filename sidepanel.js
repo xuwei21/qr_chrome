@@ -155,6 +155,8 @@ function updateQRCode(itemDiv, index, type) {
       qrContent = `bilibili://video/${qrContent}`;
     } else if (type === 1 && !content.startsWith('bilibili://space/')) {
       qrContent = `bilibili://space/${qrContent}`;
+    } else {
+      qrContent = content;
     }
 
     const qrCodeDiv = document.createElement('div');
