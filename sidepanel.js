@@ -10,9 +10,16 @@ document.addEventListener('DOMContentLoaded', function () {
 function loadItems() {
   chrome.storage.local.get(['qrItems'], function (result) {
     const items = result.qrItems || [];
+    // 确保每个项目都有 masked 字段
+    items.forEach(item => {
+      if (item.masked === undefined) {
+        item.masked = false;
+      }
+    });
     // 按时间倒序排序
     items.sort((a, b) => b.time - a.time);
     renderItems(items);
+    setTimeout(syncMaskState, 100);
   });
 }
 
@@ -36,33 +43,44 @@ function createItemElement(item, index) {
   itemDiv.className = 'item';
   itemDiv.dataset.index = index;
 
+  // 在 createItemElement 函数中，确保初始状态正确
   const hasContent = item.content && item.content.trim() !== '';
+  const maskedClass = item.masked ? 'masked' : '';
 
+  // 在 createItemElement 函数中，修改二维码部分的结构
   itemDiv.innerHTML = `
-    <div class="item-content">
-      <div class="item-header">
-        <div class="radio-group">
-          <label>
-            <input type="radio" name="type-${index}" value="0" ${item.type === 0 ? 'checked' : ''}> 稿件
-          </label>
-          <label>
-            <input type="radio" name="type-${index}" value="1" ${item.type === 1 ? 'checked' : ''}> Mid
-          </label>
-          <label>
-            <input type="radio" name="type-${index}" value="2" ${item.type === 2 ? 'checked' : ''}> 自定义
-          </label>
-        </div>
-        <div class="item-actions">
-          <button class="btn btn-delete">删除</button>
-          <button class="btn btn-top">上移</button>
-        </div>
+  <div class="item-content">
+    <div class="item-header">
+      <div class="radio-group">
+        <label>
+          <input type="radio" name="type-${index}" value="0" ${item.type === 0 ? 'checked' : ''}> 稿件
+        </label>
+        <label>
+          <input type="radio" name="type-${index}" value="1" ${item.type === 1 ? 'checked' : ''}> Mid
+        </label>
+        <label>
+          <input type="radio" name="type-${index}" value="2" ${item.type === 2 ? 'checked' : ''}> 自定义
+        </label>
       </div>
-      <input type="text" class="text-input" placeholder="输入内容..." value="${item.content || ''}">
+      <div class="item-actions">
+        <button class="btn btn-delete">删除</button>
+        <button class="btn btn-top">上移</button>
+      </div>
     </div>
-    <div class="qr-container ${hasContent ? 'has-qr' : ''}">
-      ${hasContent ? `<div class="qr-code" id="qr-code-${index}"></div>` : ''}
-    </div>
-  `;
+    <input type="text" class="text-input" placeholder="输入内容..." value="${item.content || ''}">
+  </div>
+  <div class="qr-container ${hasContent ? 'has-qr' : ''}">
+    ${hasContent ?
+      `<div class="qr-code-wrapper ${maskedClass}">
+   <div class="qr-code" id="qr-code-${index}"></div>
+   <div class="qr-mask">
+     <span>已遮挡</span>
+   </div>
+   <button class="qr-toggle-mask">${item.masked ? '取消遮挡' : '遮挡'}</button>
+ </div>`
+      : ''}
+  </div>
+`;
 
   const textInput = itemDiv.querySelector('.text-input');
   const radioInputs = itemDiv.querySelectorAll('input[type="radio"]');
@@ -119,12 +137,56 @@ function createItemElement(item, index) {
     moveItemToTop(index);
   });
 
+  // 在 createItemElement 函数的事件监听部分添加：
+  const toggleMaskBtn = itemDiv.querySelector('.qr-toggle-mask');
+  if (toggleMaskBtn) {
+    toggleMaskBtn.addEventListener('click', function (e) {
+      e.stopPropagation(); // 防止事件冒泡
+      toggleMaskState(index, itemDiv);
+    });
+  }
+
   // 初始生成二维码（如果有内容）
   if (hasContent) {
     updateQRCode(itemDiv, index, item.type);
   }
 
   return itemDiv;
+}
+
+// 切换二维码遮挡状态
+function toggleMaskState(index, itemDiv) {
+  chrome.storage.local.get(['qrItems'], function (result) {
+    const items = result.qrItems || [];
+    if (items[index]) {
+      // 切换遮挡状态
+      const newMaskedState = !items[index].masked;
+      items[index].masked = newMaskedState;
+      
+      chrome.storage.local.set({ qrItems: items }, function() {
+        // 更新UI
+        updateMaskUI(itemDiv, newMaskedState);
+        // 确保保存状态
+        saveItems();
+      });
+    }
+  });
+}
+
+// 更新遮挡UI显示
+function updateMaskUI(itemDiv, isMasked) {
+  const qrWrapper = itemDiv.querySelector('.qr-code-wrapper');
+  const toggleBtn = itemDiv.querySelector('.qr-toggle-mask');
+
+  if (isMasked) {
+    // 添加遮挡状态
+    qrWrapper.classList.add('masked');
+    toggleBtn.textContent = '取消遮挡';
+  } else {
+    // 移除遮挡状态
+    qrWrapper.classList.remove('masked');
+    toggleBtn.textContent = '遮挡';
+  }
 }
 
 // 格式化文本输入框显示
@@ -140,8 +202,7 @@ function formatTextInput(textInput, type) {
   // 自定义不处理
 }
 
-// 更新二维码
-// 更新二维码 - 使用接口生成
+// updateQRCode 函数
 function updateQRCode(itemDiv, index, type) {
   const textInput = itemDiv.querySelector('.text-input');
   const qrContainer = itemDiv.querySelector('.qr-container');
@@ -160,27 +221,53 @@ function updateQRCode(itemDiv, index, type) {
       qrContent = content;
     }
 
-    const qrCodeDiv = document.createElement('div');
-    qrCodeDiv.className = 'qr-code';
-    qrCodeDiv.id = `qr-code-${index}`;
-    
-    // 添加加载状态
-    const loadingText = document.createElement('div');
-    loadingText.className = 'qr-loading';
-    loadingText.textContent = '生成中...';
-    qrCodeDiv.appendChild(loadingText);
-    
-    qrContainer.appendChild(qrCodeDiv);
+    // 获取当前的遮挡状态
+    chrome.storage.local.get(['qrItems'], function (result) {
+      const items = result.qrItems || [];
+      const currentItem = items[index];
+      // 确保正确处理 undefined 状态
+      const isMasked = currentItem ? (currentItem.masked !== undefined ? currentItem.masked : false) : false;
+      
+      // 创建二维码包装器
+      const qrWrapper = document.createElement('div');
+      qrWrapper.className = `qr-code-wrapper ${isMasked ? 'masked' : ''}`;
 
-    // 使用接口生成二维码
-    generateQRCodeByAPI(qrContent, qrCodeDiv, index);
+      const qrCodeDiv = document.createElement('div');
+      qrCodeDiv.className = 'qr-code';
+      qrCodeDiv.id = `qr-code-${index}`;
+      qrWrapper.appendChild(qrCodeDiv);
+
+      // 添加遮挡层
+      const mask = document.createElement('div');
+      mask.className = 'qr-mask';
+      mask.innerHTML = '<span>已遮挡</span>';
+      qrWrapper.appendChild(mask);
+
+      // 添加遮挡切换按钮
+      const toggleBtn = document.createElement('button');
+      toggleBtn.className = 'qr-toggle-mask';
+      toggleBtn.textContent = isMasked ? '取消遮挡' : '遮挡';
+      toggleBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        toggleMaskState(index, itemDiv);
+      });
+      qrWrapper.appendChild(toggleBtn);
+
+      qrContainer.appendChild(qrWrapper);
+      qrContainer.classList.add('has-qr');
+
+      // 生成二维码
+      generateQRCodeByAPI(qrContent, qrCodeDiv, index);
+    });
+  } else {
+    qrContainer.classList.remove('has-qr');
   }
 }
 
 // 添加重试机制
 function retryGenerateQRCode(content, container, index, retryCount = 0) {
   const maxRetries = 3;
-  
+
   if (retryCount >= maxRetries) {
     const loadingEl = container.querySelector('.qr-loading');
     if (loadingEl) {
@@ -189,7 +276,7 @@ function retryGenerateQRCode(content, container, index, retryCount = 0) {
     }
     return;
   }
-  
+
   // 延迟重试，避免频繁请求
   setTimeout(() => {
     generateQRCodeByAPI(content, container, index);
@@ -210,15 +297,15 @@ function generateQRCodeByAPI(content, container, index) {
   // 对内容进行URL编码
   const encodedContent = encodeURIComponent(content);
   const apiUrl = `https://api.2dcode.biz/v1/create-qr-code?data=${encodedContent}&size=240x240`;
-  
+
   // 创建图片元素
   const img = document.createElement('img');
   img.alt = '二维码';
   img.style.width = '120px';
   img.style.height = '120px';
-  
+
   // 图片加载成功
-  img.onload = function() {
+  img.onload = function () {
     // 移除加载提示
     const loadingEl = container.querySelector('.qr-loading');
     if (loadingEl) {
@@ -227,20 +314,20 @@ function generateQRCodeByAPI(content, container, index) {
     // 清空容器并添加图片
     container.innerHTML = '';
     container.appendChild(img);
-    
+
     // 添加成功类名
     container.classList.add('qr-loaded');
   };
-  
+
   // 图片加载失败
-  img.onerror = function() {
+  img.onerror = function () {
     const loadingEl = container.querySelector('.qr-loading');
     if (loadingEl) {
       loadingEl.textContent = `重试中... (${retryCount + 1}/3)`;
     }
     retryGenerateQRCode(content, container, index, retryCount + 1);
   };
-  
+
   // 设置图片源
   img.src = apiUrl;
 }
@@ -252,6 +339,23 @@ function updateItemType(index, type) {
     if (items[index]) {
       items[index].type = type;
       chrome.storage.local.set({ qrItems: items });
+    }
+  });
+}
+
+// 添加状态同步函数
+function syncMaskState() {
+  const itemElements = document.querySelectorAll('.item');
+  itemElements.forEach((itemElement, index) => {
+    const qrWrapper = itemElement.querySelector('.qr-code-wrapper');
+    if (qrWrapper) {
+      chrome.storage.local.get(['qrItems'], function(result) {
+        const items = result.qrItems || [];
+        if (items[index]) {
+          const isMasked = items[index].masked;
+          updateMaskUI(itemElement, isMasked);
+        }
+      });
     }
   });
 }
@@ -303,15 +407,22 @@ function moveItemToTop(index) {
 function saveItems() {
   const itemElements = document.querySelectorAll('.item');
   const items = [];
-  itemElements.forEach((itemElement) => {
+  itemElements.forEach((itemElement, index) => {
     const textInput = itemElement.querySelector('.text-input');
     const checkedRadio = itemElement.querySelector('input[type="radio"]:checked');
+    const qrWrapper = itemElement.querySelector('.qr-code-wrapper');
+    
+    // 通过 CSS 类名判断遮挡状态，而不是按钮文本
+    const isMasked = qrWrapper ? qrWrapper.classList.contains('masked') : false;
+    
     items.push({
       type: parseInt(checkedRadio.value),
       content: textInput.value,
       time: Date.now(),
+      masked: isMasked
     });
   });
+  
   // 按时间倒序
   items.sort((a, b) => b.time - a.time);
   chrome.storage.local.set({ qrItems: items });

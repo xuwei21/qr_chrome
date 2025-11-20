@@ -390,3 +390,94 @@ h1 {
     background: #2a1215;
   }
 }
+
+/* 二维码容器和遮挡相关样式 */
+.qr-code-wrapper {
+  position: relative;
+  display: inline-block;
+  margin: 8px 0;
+  cursor: pointer;
+}
+
+.qr-code {
+  width: 120px;
+  height: 120px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+/* 遮挡层 - 初始状态不显示 */
+.qr-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 14px;
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+/* 遮挡状态下显示mask */
+.qr-code-wrapper.masked .qr-mask {
+  opacity: 1;
+}
+
+/* hover时显示mask效果 */
+.qr-code-wrapper:not(.masked):hover .qr-mask {
+  opacity: 0.5;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* 遮挡按钮 - 默认隐藏，hover时显示 */
+.qr-toggle-mask {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: none;
+  background: rgba(255, 255, 255, 0.95);
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 20;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+}
+
+.qr-toggle-mask:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: translate(-50%, -50%) scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* hover时显示按钮 */
+.qr-code-wrapper:hover .qr-toggle-mask {
+  display: block;
+}
+
+/* 暗色主题适配 */
+@media (prefers-color-scheme: dark) {
+  .qr-toggle-mask {
+    background: rgba(50, 50, 50, 0.95);
+    color: white;
+  }
+  
+  .qr-toggle-mask:hover {
+    background: rgba(70, 70, 70, 1);
+  }
+  
+  .qr-mask {
+    background: rgba(0, 0, 0, 0.8);
+  }
+}
