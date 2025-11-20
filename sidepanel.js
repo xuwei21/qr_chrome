@@ -141,6 +141,7 @@ function formatTextInput(textInput, type) {
 }
 
 // 更新二维码
+// 更新二维码 - 使用接口生成
 function updateQRCode(itemDiv, index, type) {
   const textInput = itemDiv.querySelector('.text-input');
   const qrContainer = itemDiv.querySelector('.qr-container');
@@ -162,18 +163,86 @@ function updateQRCode(itemDiv, index, type) {
     const qrCodeDiv = document.createElement('div');
     qrCodeDiv.className = 'qr-code';
     qrCodeDiv.id = `qr-code-${index}`;
+    
+    // 添加加载状态
+    const loadingText = document.createElement('div');
+    loadingText.className = 'qr-loading';
+    loadingText.textContent = '生成中...';
+    qrCodeDiv.appendChild(loadingText);
+    
     qrContainer.appendChild(qrCodeDiv);
 
-    // 使用 QRCode.js 生成二维码
-    new QRCode(qrCodeDiv, {
-      text: qrContent,
-      width: 120,
-      height: 120,
-      colorDark: "#000000",
-      colorLight: "#ffffff",
-      correctLevel: QRCode.CorrectLevel.H,
-    });
+    // 使用接口生成二维码
+    generateQRCodeByAPI(qrContent, qrCodeDiv, index);
   }
+}
+
+// 添加重试机制
+function retryGenerateQRCode(content, container, index, retryCount = 0) {
+  const maxRetries = 3;
+  
+  if (retryCount >= maxRetries) {
+    const loadingEl = container.querySelector('.qr-loading');
+    if (loadingEl) {
+      loadingEl.textContent = '生成失败';
+      loadingEl.classList.add('qr-error');
+    }
+    return;
+  }
+  
+  // 延迟重试，避免频繁请求
+  setTimeout(() => {
+    generateQRCodeByAPI(content, container, index);
+  }, 1000 * (retryCount + 1));
+}
+
+// 通过API生成二维码
+function generateQRCodeByAPI(content, container, index) {
+  // 检查网络连接
+  if (!navigator.onLine) {
+    const loadingEl = container.querySelector('.qr-loading');
+    if (loadingEl) {
+      loadingEl.textContent = '网络未连接';
+      loadingEl.classList.add('qr-error');
+    }
+    return;
+  }
+  // 对内容进行URL编码
+  const encodedContent = encodeURIComponent(content);
+  const apiUrl = `https://api.2dcode.biz/v1/create-qr-code?data=${encodedContent}&size=240x240`;
+  
+  // 创建图片元素
+  const img = document.createElement('img');
+  img.alt = '二维码';
+  img.style.width = '120px';
+  img.style.height = '120px';
+  
+  // 图片加载成功
+  img.onload = function() {
+    // 移除加载提示
+    const loadingEl = container.querySelector('.qr-loading');
+    if (loadingEl) {
+      loadingEl.remove();
+    }
+    // 清空容器并添加图片
+    container.innerHTML = '';
+    container.appendChild(img);
+    
+    // 添加成功类名
+    container.classList.add('qr-loaded');
+  };
+  
+  // 图片加载失败
+  img.onerror = function() {
+    const loadingEl = container.querySelector('.qr-loading');
+    if (loadingEl) {
+      loadingEl.textContent = `重试中... (${retryCount + 1}/3)`;
+    }
+    retryGenerateQRCode(content, container, index, retryCount + 1);
+  };
+  
+  // 设置图片源
+  img.src = apiUrl;
 }
 
 // 更新项目类型

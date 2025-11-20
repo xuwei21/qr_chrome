@@ -355,3 +355,38 @@ h1 {
     scroll-behavior: auto !important;
   }
 }
+
+/* 二维码加载状态样式 */
+.qr-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 120px;
+  background: #f5f5f5;
+  color: #666;
+  font-size: 14px;
+  border-radius: 8px;
+}
+
+.qr-error {
+  color: #ff4d4f;
+  background: #fff2f0;
+}
+
+.qr-loaded {
+  transition: all 0.3s ease;
+}
+
+/* 暗色主题支持 */
+@media (prefers-color-scheme: dark) {
+  .qr-loading {
+    background: #2a2a2a;
+    color: #ccc;
+  }
+  
+  .qr-error {
+    color: #ff7875;
+    background: #2a1215;
+  }
+}
