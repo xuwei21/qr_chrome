@@ -13,7 +13,7 @@ mid：生成用户主页空间的二维码
 
 ### 安装方法
 1.下载并解压 https://github.com/xuwei21/qr_chrome/tree/qr_chrome_v4
-2.打开Chrome浏览器，进入 chrome://extensions/
+2.打开Chrome浏览器（edge浏览器类似），地址栏输入 chrome://extensions/
 ![alt text](image.png)
 3.打开开发者模式
 ![alt text](image-3.png)
@@ -21,5 +21,5 @@ mid：生成用户主页空间的二维码
 ![alt text](image-1.png)
 5.选择解压后的目录，打开
 ![alt text](image-4.png)
-6.设置
+6.设置常驻
 ![alt text](image-5.png)
