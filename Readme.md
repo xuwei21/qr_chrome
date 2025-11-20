@@ -12,7 +12,8 @@ mid：生成用户主页空间的二维码
 本地存储：所有数据保存在本地，保护隐私
 
 ### 安装方法
-1.下载并解压 https://github.com/xuwei21/qr_chrome/tree/qr_chrome_v4
+1.下载并解压 
+https://github.com/xuwei21/qr_chrome
 2.打开Chrome浏览器（edge浏览器类似），地址栏输入 chrome://extensions/
 ![alt text](image.png)
 3.打开开发者模式
