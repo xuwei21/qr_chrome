@@ -15,6 +15,9 @@ function loadItems() {
       if (item.masked === undefined) {
         item.masked = false;
       }
+      if (item.note === undefined) {
+        item.note = ''; // 确保有备注字段
+      }
     });
     // 按时间倒序排序
     items.sort((a, b) => b.time - a.time);
@@ -68,6 +71,7 @@ function createItemElement(item, index) {
       </div>
     </div>
     <input type="text" class="text-input" placeholder="输入内容..." value="${item.content || ''}">
+    <textarea class="note-textarea" placeholder="备注（可选）">${item.note || ''}</textarea>
   </div>
   <div class="qr-container ${hasContent ? 'has-qr' : ''}">
     ${hasContent ?
@@ -87,6 +91,7 @@ function createItemElement(item, index) {
   const deleteBtn = itemDiv.querySelector('.btn-delete');
   const topBtn = itemDiv.querySelector('.btn-top');
   const qrContainer = itemDiv.querySelector('.qr-container');
+  const noteTextarea = itemDiv.querySelector('.note-textarea');
 
   // 文本输入变化时生成二维码
   textInput.addEventListener('input', function () {
@@ -96,9 +101,11 @@ function createItemElement(item, index) {
     if (content) {
       updateQRCode(itemDiv, index, currentType);
       qrContainer.classList.add('has-qr');
+      noteTextarea.classList.add('show');
     } else {
       qrContainer.innerHTML = '';
       qrContainer.classList.remove('has-qr');
+      noteTextarea.classList.remove('show');
     }
     saveItems();
   });
@@ -115,11 +122,22 @@ function createItemElement(item, index) {
     }
   });
 
+  // 备注输入变化时保存
+  noteTextarea.addEventListener('input', function() {
+    saveItems();
+  });
+
+  // 备注失焦时保存
+  noteTextarea.addEventListener('blur', function() {
+    saveItems();
+  });
+
   // 单选按钮变化
   radioInputs.forEach((radio) => {
     radio.addEventListener('change', function () {
       const newType = parseInt(this.value);
       textInput.value = '';
+      noteTextarea.value = '';
       qrContainer.innerHTML = '';
       qrContainer.classList.remove('has-qr');
       updateItemType(index, newType);
@@ -148,7 +166,10 @@ function createItemElement(item, index) {
 
   // 初始生成二维码（如果有内容）
   if (hasContent) {
+    noteTextarea.classList.add('show');
     updateQRCode(itemDiv, index, item.type);
+  }else {
+    noteTextarea.classList.remove('show');
   }
 
   return itemDiv;
@@ -206,12 +227,14 @@ function formatTextInput(textInput, type) {
 function updateQRCode(itemDiv, index, type) {
   const textInput = itemDiv.querySelector('.text-input');
   const qrContainer = itemDiv.querySelector('.qr-container');
+  const noteTextarea = itemDiv.querySelector('.note-textarea');
   let content = textInput.value.trim();
 
   // 清除之前的二维码
   qrContainer.innerHTML = '';
 
   if (content) {
+    noteTextarea.classList.add('show');
     let qrContent = content;
     if (type === 0 && !content.startsWith('bilibili://video/')) {
       qrContent = `bilibili://video/${qrContent}`;
@@ -260,6 +283,7 @@ function updateQRCode(itemDiv, index, type) {
       generateQRCodeByAPI(qrContent, qrCodeDiv, index);
     });
   } else {
+    noteTextarea.classList.remove('show');
     qrContainer.classList.remove('has-qr');
   }
 }
@@ -367,6 +391,7 @@ function addNewItem() {
     const newItem = {
       type: 0,
       content: '',
+      note: '',
       time: Date.now(),
     };
     items.unshift(newItem);
@@ -409,6 +434,7 @@ function saveItems() {
   const items = [];
   itemElements.forEach((itemElement, index) => {
     const textInput = itemElement.querySelector('.text-input');
+    const noteTextarea = itemElement.querySelector('.note-textarea');
     const checkedRadio = itemElement.querySelector('input[type="radio"]:checked');
     const qrWrapper = itemElement.querySelector('.qr-code-wrapper');
     
@@ -418,6 +444,7 @@ function saveItems() {
     items.push({
       type: parseInt(checkedRadio.value),
       content: textInput.value,
+      note: noteTextarea ? noteTextarea.value : '',
       time: Date.now(),
       masked: isMasked
     });

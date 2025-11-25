@@ -202,6 +202,7 @@ h1 {
 /* 输入框 */
 .text-input {
   width: 100%;
+  max-height: 32px;
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -219,6 +220,44 @@ h1 {
   border-color: var(--brand-600);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-600) 20%, #ffffff 80%);
   background: var(--surface);
+}
+
+.note-textarea {
+  width: 100%;
+  padding: 1px 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-subtle);
+  background: color-mix(in oklab, var(--surface) 92%, white 8%);
+  transition: border-color var(--duration) var(--easing), 
+              box-shadow var(--duration) var(--easing), 
+              background-color var(--duration) var(--easing);
+  resize: vertical;
+  min-height: 10px;
+  max-height: 24px;
+  font-family: inherit;
+  display: none; /* 默认隐藏 */
+}
+
+.note-textarea::placeholder {
+  color: color-mix(in oklab, var(--text-subtle) 70%, #aaa 30%);
+}
+
+.note-textarea:hover {
+  border-color: var(--border-strong);
+}
+
+.note-textarea:focus-visible {
+  outline: none;
+  border-color: var(--brand-600);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-600) 20%, #ffffff 80%);
+  background: var(--surface);
+}
+
+/* 有二维码时显示的类 */
+.note-textarea.show {
+  display: block;
 }
 
 /* 右侧二维码区域 */
