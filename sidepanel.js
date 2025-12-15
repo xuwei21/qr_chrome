@@ -1,9 +1,25 @@
 // sidepanel.js
 
+// 全局变量存储搜索状态
+let currentSearchQuery = '';
+let allItems = [];
+
 // 初始化
 document.addEventListener('DOMContentLoaded', function () {
   loadItems();
   document.getElementById('add-item').addEventListener('click', addNewItem);
+  
+  // 添加搜索框事件监听
+  const searchInput = document.getElementById('search-input');
+  const clearSearchBtn = document.getElementById('clear-search');
+  
+  if (searchInput) {
+    searchInput.addEventListener('input', handleSearch);
+  }
+  
+  if (clearSearchBtn) {
+    clearSearchBtn.addEventListener('click', clearSearch);
+  }
 });
 
 // 从存储中加载项目
@@ -19,38 +35,167 @@ function loadItems() {
         item.note = ''; // 确保有备注字段
       }
     });
+    
     // 按时间倒序排序
     items.sort((a, b) => b.time - a.time);
-    renderItems(items);
+    
+    // 保存到全局变量
+    allItems = items;
+    
+    // 根据当前搜索条件渲染
+    if (currentSearchQuery) {
+      const filteredItems = filterItemsBySearch(allItems, currentSearchQuery);
+      renderItems(filteredItems, currentSearchQuery);
+    } else {
+      renderItems(items);
+    }
+    
     setTimeout(syncMaskState, 100);
   });
 }
 
+// 搜索处理函数
+function handleSearch(event) {
+  currentSearchQuery = event.target.value.trim();
+  updateClearSearchButton();
+  
+  if (currentSearchQuery) {
+    const filteredItems = filterItemsBySearch(allItems, currentSearchQuery);
+    renderItems(filteredItems, currentSearchQuery);
+  } else {
+    // 无搜索词，显示所有项目
+    renderItems(allItems);
+  }
+}
+
+// 清空搜索
+function clearSearch() {
+  const searchInput = document.getElementById('search-input');
+  if (searchInput) {
+    searchInput.value = '';
+    searchInput.focus();
+  }
+  
+  currentSearchQuery = '';
+  updateClearSearchButton();
+  renderItems(allItems);
+}
+
+// 更新清空搜索按钮的显示状态
+function updateClearSearchButton() {
+  const clearSearchBtn = document.getElementById('clear-search');
+  if (clearSearchBtn) {
+    if (currentSearchQuery) {
+      clearSearchBtn.style.display = 'flex';
+    } else {
+      clearSearchBtn.style.display = 'none';
+    }
+  }
+}
+
+// 根据搜索词过滤项目
+function filterItemsBySearch(items, searchQuery) {
+  if (!searchQuery) return items;
+  
+  try {
+    // 创建不区分大小写的正则表达式
+    const regex = new RegExp(searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    
+    return items.filter(item => {
+      // 搜索备注字段
+      if (item.note && regex.test(item.note)) {
+        return true;
+      }
+      
+      // 可选：也搜索内容字段
+      if (item.content && regex.test(item.content)) {
+        return true;
+      }
+      
+      return false;
+    });
+  } catch (error) {
+    console.error('搜索正则表达式错误:', error);
+    return items;
+  }
+}
+
 // 渲染项目列表
-function renderItems(items) {
+function renderItems(items, searchQuery = '') {
   const itemList = document.getElementById('item-list');
+  
+  // 移除可能的搜索结果统计
+  const existingStats = document.querySelector('.search-stats');
+  if (existingStats) {
+    existingStats.remove();
+  }
+  
   if (items.length === 0) {
-    itemList.innerHTML = '<div class="empty-state">暂无数据，点击下方按钮添加</div>';
+    if (searchQuery) {
+      // 搜索无结果
+      itemList.innerHTML = `
+        <div class="no-results">
+          <span class="emoji">🔍</span>
+          <p>未找到匹配"${searchQuery}"的二维码</p>
+          <p style="font-size: 12px; margin-top: 8px; opacity: 0.7;">尝试其他关键词或清空搜索</p>
+        </div>
+      `;
+      
+      // 添加搜索结果统计到顶部
+      addSearchStats(0, searchQuery);
+    } else {
+      // 无数据
+      itemList.innerHTML = '<div class="empty-state">暂无数据，点击下方按钮添加</div>';
+    }
     return;
   }
+  
   itemList.innerHTML = '';
+  
+  // 如果有搜索词，显示搜索结果统计
+  if (searchQuery) {
+    addSearchStats(items.length, searchQuery);
+  }
+  
   items.forEach((item, index) => {
-    const itemElement = createItemElement(item, index);
+    const itemElement = createItemElement(item, index, searchQuery);
     itemList.appendChild(itemElement);
   });
 }
 
-// 创建项目元素
-function createItemElement(item, index) {
+// 添加搜索结果统计
+function addSearchStats(count, searchQuery) {
+  const itemList = document.getElementById('item-list');
+  const statsElement = document.createElement('div');
+  statsElement.className = 'search-stats';
+  
+  if (count === 0) {
+    statsElement.textContent = `未找到匹配"${searchQuery}"的二维码`;
+  }
+  
+  itemList.insertBefore(statsElement, itemList.firstChild);
+}
+
+// 创建项目元素（修改以支持高亮）
+function createItemElement(item, index, searchQuery = '') {
   const itemDiv = document.createElement('div');
   itemDiv.className = 'item';
   itemDiv.dataset.index = index;
 
-  // 在 createItemElement 函数中，确保初始状态正确
   const hasContent = item.content && item.content.trim() !== '';
   const maskedClass = item.masked ? 'masked' : '';
 
-  // 在 createItemElement 函数中，修改二维码部分的结构
+  // 处理备注高亮
+  let noteDisplay = item.note || '';
+  if (searchQuery && item.note) {
+    try {
+      const regex = new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      noteDisplay = item.note.replace(regex, '<span class="search-highlight">$1</span>');
+    } catch (error) {
+      console.error('高亮正则表达式错误:', error);
+    }
+  }
+
   itemDiv.innerHTML = `
   <div class="item-content">
     <div class="item-header">
@@ -71,7 +216,9 @@ function createItemElement(item, index) {
       </div>
     </div>
     <input type="text" class="text-input" placeholder="输入内容..." value="${item.content || ''}">
-    <textarea class="note-textarea" placeholder="备注（可选）">${item.note || ''}</textarea>
+    <div class="note-container">
+      <textarea class="note-textarea" placeholder="备注（可选）">${item.note || ''}</textarea>
+    </div>
   </div>
   <div class="qr-container ${hasContent ? 'has-qr' : ''}">
     ${hasContent ?
@@ -122,9 +269,22 @@ function createItemElement(item, index) {
     }
   });
 
-  // 备注输入变化时保存
+  // 备注输入变化时保存并重新搜索
   noteTextarea.addEventListener('input', function() {
+    // 先保存
     saveItems();
+    
+    // 更新全局数据
+    chrome.storage.local.get(['qrItems'], function(result) {
+      allItems = result.qrItems || [];
+      allItems.sort((a, b) => b.time - a.time);
+      
+      // 如果当前有搜索词，重新执行搜索
+      if (currentSearchQuery) {
+        const filteredItems = filterItemsBySearch(allItems, currentSearchQuery);
+        renderItems(filteredItems, currentSearchQuery);
+      }
+    });
   });
 
   // 备注失焦时保存
@@ -155,7 +315,7 @@ function createItemElement(item, index) {
     moveItemToTop(index);
   });
 
-  // 在 createItemElement 函数的事件监听部分添加：
+  // 遮挡切换按钮
   const toggleMaskBtn = itemDiv.querySelector('.qr-toggle-mask');
   if (toggleMaskBtn) {
     toggleMaskBtn.addEventListener('click', function (e) {
@@ -168,7 +328,7 @@ function createItemElement(item, index) {
   if (hasContent) {
     noteTextarea.classList.add('show');
     updateQRCode(itemDiv, index, item.type);
-  }else {
+  } else {
     noteTextarea.classList.remove('show');
   }
 
@@ -185,6 +345,10 @@ function toggleMaskState(index, itemDiv) {
       items[index].masked = newMaskedState;
       
       chrome.storage.local.set({ qrItems: items }, function() {
+        // 更新全局数据
+        allItems = items;
+        allItems.sort((a, b) => b.time - a.time);
+        
         // 更新UI
         updateMaskUI(itemDiv, newMaskedState);
         // 确保保存状态
@@ -363,6 +527,10 @@ function updateItemType(index, type) {
     if (items[index]) {
       items[index].type = type;
       chrome.storage.local.set({ qrItems: items });
+      
+      // 更新全局数据
+      allItems = items;
+      allItems.sort((a, b) => b.time - a.time);
     }
   });
 }
@@ -396,7 +564,17 @@ function addNewItem() {
     };
     items.unshift(newItem);
     chrome.storage.local.set({ qrItems: items }, function () {
-      loadItems();
+      // 更新全局数据
+      allItems = items;
+      allItems.sort((a, b) => b.time - a.time);
+      
+      // 重新加载并应用当前搜索
+      if (currentSearchQuery) {
+        const filteredItems = filterItemsBySearch(allItems, currentSearchQuery);
+        renderItems(filteredItems, currentSearchQuery);
+      } else {
+        renderItems(allItems);
+      }
     });
   });
 }
@@ -407,7 +585,17 @@ function deleteItem(index) {
     const items = result.qrItems || [];
     items.splice(index, 1);
     chrome.storage.local.set({ qrItems: items }, function () {
-      loadItems();
+      // 更新全局数据
+      allItems = items;
+      allItems.sort((a, b) => b.time - a.time);
+      
+      // 重新加载并应用当前搜索
+      if (currentSearchQuery) {
+        const filteredItems = filterItemsBySearch(allItems, currentSearchQuery);
+        renderItems(filteredItems, currentSearchQuery);
+      } else {
+        renderItems(allItems);
+      }
     });
   });
 }
@@ -422,7 +610,17 @@ function moveItemToTop(index) {
       items.unshift(item);
       items[0].time = Date.now();
       chrome.storage.local.set({ qrItems: items }, function () {
-        loadItems();
+        // 更新全局数据
+        allItems = items;
+        allItems.sort((a, b) => b.time - a.time);
+        
+        // 重新加载并应用当前搜索
+        if (currentSearchQuery) {
+          const filteredItems = filterItemsBySearch(allItems, currentSearchQuery);
+          renderItems(filteredItems, currentSearchQuery);
+        } else {
+          renderItems(allItems);
+        }
       });
     }
   });
@@ -453,4 +651,7 @@ function saveItems() {
   // 按时间倒序
   items.sort((a, b) => b.time - a.time);
   chrome.storage.local.set({ qrItems: items });
+  
+  // 更新全局数据
+  allItems = items;
 }

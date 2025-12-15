@@ -23,6 +23,10 @@
   --danger: #ff0037;
   --danger-700: #ff0037;
 
+  /* 搜索相关颜色 */
+  --search-highlight: #fff8c5; /* 搜索结果高亮色 */
+  --search-highlight-dark: #d9c100; /* 深色主题高亮色 */
+
   /* 阴影与圆角 */
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -54,6 +58,9 @@
 
     --text: #e5e7eb;
     --text-subtle: #9aa4b2;
+    
+    --search-highlight: #d9c100; /* 深色主题高亮色 */
+    --search-highlight-dark: #fff8c5;
 
     --shadow-sm: 0 1px 2px rgba(0,0,0,0.6);
     --shadow-md: 0 6px 16px rgba(0,0,0,0.55);
@@ -88,14 +95,114 @@ html, body {
   gap: var(--gap-3);
 }
 
-/* 标题 */
+/* 标题区域 - 修改为左对齐并添加搜索框 */
+.header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--gap-3);
+  padding-bottom: var(--gap-2);
+  border-bottom: 1px solid var(--border);
+}
+
 h1 {
   font-size: 16px;
   font-weight: 600;
   color: var(--text);
-  text-align: center;
   letter-spacing: .2px;
+  white-space: nowrap;
+  margin: 0;
+}
+
+/* 搜索容器 */
+.search-container {
+  position: relative;
+  flex: 1;
+  max-width: 300px;
+  display: flex;
+  align-items: center;
+}
+
+.search-input {
+  width: 100%;
+  padding: 8px 32px 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--text);
+  background: var(--surface);
+  transition: border-color var(--duration) var(--easing), 
+              box-shadow var(--duration) var(--easing);
+}
+
+.search-input::placeholder {
+  color: var(--text-subtle);
+  opacity: 0.8;
+}
+
+.search-input:hover {
+  border-color: var(--border-strong);
+}
+
+.search-input:focus-visible {
+  outline: none;
+  border-color: var(--brand-600);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-600) 20%, #ffffff 80%);
+}
+
+/* 清空搜索按钮 */
+.btn-clear-search {
+  position: absolute;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--text-subtle);
+  color: var(--surface);
+  font-size: 16px;
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity var(--duration) var(--easing),
+              background-color var(--duration) var(--easing);
+  border: none;
+}
+
+.btn-clear-search:hover {
+  opacity: 1;
+  background: var(--danger);
+}
+
+.btn-clear-search:active {
+  transform: scale(0.95);
+}
+
+/* 搜索结果高亮 */
+.search-highlight {
+  background-color: var(--search-highlight);
+  color: inherit;
+  padding: 0 2px;
+  border-radius: 2px;
+  font-weight: 500;
+}
+
+@media (prefers-color-scheme: dark) {
+  .search-highlight {
+    background-color: var(--search-highlight-dark);
+    color: #000;
+  }
+}
+
+/* 搜索结果统计 */
+.search-stats {
+  font-size: 12px;
+  color: var(--text-subtle);
   padding: var(--gap-2) 0;
+  text-align: center;
   border-bottom: 1px solid var(--border);
 }
 
@@ -325,7 +432,7 @@ h1 {
   transform: translateY(0);
 }
 
-/* 主要按钮（底部“添加新项”） */
+/* 主要按钮（底部"添加新项"） */
 .btn-primary {
   width: 100%;
   padding: 10px 16px;
@@ -385,6 +492,23 @@ h1 {
   border: 1px dashed var(--border);
   border-radius: var(--radius-md);
   background: color-mix(in oklab, var(--surface) 90%, #fff 10%);
+}
+
+/* 搜索结果为空的状态 */
+.no-results {
+  text-align: center;
+  padding: 40px 24px;
+  color: var(--text-subtle);
+  font-size: 14px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--surface) 90%, #fff 10%);
+}
+
+.no-results .emoji {
+  font-size: 32px;
+  margin-bottom: 12px;
+  display: block;
 }
 
 /* 减少动画偏好 */
