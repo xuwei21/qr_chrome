@@ -3,45 +3,114 @@
 // 全局变量存储搜索状态
 let currentSearchQuery = '';
 let allItems = [];
+let dragStartIndex = -1;
+let dragOverIndex = -1;
+let isDragging = false;
 
 // 初始化
 document.addEventListener('DOMContentLoaded', function () {
   loadItems();
   document.getElementById('add-item').addEventListener('click', addNewItem);
-  
+
   // 添加搜索框事件监听
   const searchInput = document.getElementById('search-input');
   const clearSearchBtn = document.getElementById('clear-search');
-  
+
   if (searchInput) {
     searchInput.addEventListener('input', handleSearch);
   }
-  
+
   if (clearSearchBtn) {
     clearSearchBtn.addEventListener('click', clearSearch);
   }
 });
 
+// 拖曳事件处理函数
+function handleDragStart(e, index) {
+  dragStartIndex = index;
+  isDragging = true;
+  e.target.classList.add('dragging');
+  e.dataTransfer.setData('text/plain', index);
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleDragOver(e, index) {
+  e.preventDefault();
+  if (isDragging && index !== dragStartIndex) {
+    dragOverIndex = index;
+    e.currentTarget.classList.add('drag-over');
+  }
+}
+
+function handleDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+
+function handleDrop(e, index) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+
+  if (dragStartIndex !== -1 && dragStartIndex !== index) {
+    moveItem(dragStartIndex, index);
+  }
+
+  dragStartIndex = -1;
+  dragOverIndex = -1;
+  isDragging = false;
+}
+
+function handleDragEnd(e) {
+  e.target.classList.remove('dragging');
+  document.querySelectorAll('.item').forEach(item => {
+    item.classList.remove('drag-over');
+  });
+  dragStartIndex = -1;
+  dragOverIndex = -1;
+  isDragging = false;
+}
+
 // 从存储中加载项目
 function loadItems() {
   chrome.storage.local.get(['qrItems'], function (result) {
     const items = result.qrItems || [];
-    // 确保每个项目都有 masked 字段
+
+    // 数据迁移：如果存在 time 字段，转换为 order
+    let needsMigration = false;
+    if (items.length > 0 && items[0].time !== undefined) {
+      // 按时间倒序排序，然后分配 order
+      items.sort((a, b) => b.time - a.time);
+      items.forEach((item, index) => {
+        item.order = index;
+        // 移除 time 字段（可选）
+        // delete item.time;
+      });
+      needsMigration = true;
+    } else if (items.length > 0 && items[0].order === undefined) {
+      // 确保有 order 字段
+      items.forEach((item, index) => {
+        item.order = index;
+      });
+      needsMigration = true;
+    }
+
+    // 按 order 升序排序
+    items.sort((a, b) => a.order - b.order);
+
+    // 确保每个项目都有必要的字段
     items.forEach(item => {
-      if (item.masked === undefined) {
-        item.masked = false;
-      }
-      if (item.note === undefined) {
-        item.note = ''; // 确保有备注字段
-      }
+      if (item.masked === undefined) item.masked = false;
+      if (item.note === undefined) item.note = '';
+      if (item.order === undefined) item.order = items.length - 1; // 最后
     });
-    
-    // 按时间倒序排序
-    items.sort((a, b) => b.time - a.time);
-    
+
+    // 如果需要迁移，保存新数据
+    if (needsMigration) {
+      chrome.storage.local.set({ qrItems: items });
+    }
+
     // 保存到全局变量
     allItems = items;
-    
+
     // 根据当前搜索条件渲染
     if (currentSearchQuery) {
       const filteredItems = filterItemsBySearch(allItems, currentSearchQuery);
@@ -49,7 +118,7 @@ function loadItems() {
     } else {
       renderItems(items);
     }
-    
+
     setTimeout(syncMaskState, 100);
   });
 }
@@ -58,7 +127,7 @@ function loadItems() {
 function handleSearch(event) {
   currentSearchQuery = event.target.value.trim();
   updateClearSearchButton();
-  
+
   if (currentSearchQuery) {
     const filteredItems = filterItemsBySearch(allItems, currentSearchQuery);
     renderItems(filteredItems, currentSearchQuery);
@@ -75,7 +144,7 @@ function clearSearch() {
     searchInput.value = '';
     searchInput.focus();
   }
-  
+
   currentSearchQuery = '';
   updateClearSearchButton();
   renderItems(allItems);
@@ -96,22 +165,22 @@ function updateClearSearchButton() {
 // 根据搜索词过滤项目
 function filterItemsBySearch(items, searchQuery) {
   if (!searchQuery) return items;
-  
+
   try {
     // 创建不区分大小写的正则表达式
     const regex = new RegExp(searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-    
+
     return items.filter(item => {
       // 搜索备注字段
       if (item.note && regex.test(item.note)) {
         return true;
       }
-      
+
       // 可选：也搜索内容字段
       if (item.content && regex.test(item.content)) {
         return true;
       }
-      
+
       return false;
     });
   } catch (error) {
@@ -123,13 +192,13 @@ function filterItemsBySearch(items, searchQuery) {
 // 渲染项目列表
 function renderItems(items, searchQuery = '') {
   const itemList = document.getElementById('item-list');
-  
+
   // 移除可能的搜索结果统计
   const existingStats = document.querySelector('.search-stats');
   if (existingStats) {
     existingStats.remove();
   }
-  
+
   if (items.length === 0) {
     if (searchQuery) {
       // 搜索无结果
@@ -140,23 +209,24 @@ function renderItems(items, searchQuery = '') {
           <p style="font-size: 12px; margin-top: 8px; opacity: 0.7;">尝试其他关键词或清空搜索</p>
         </div>
       `;
-      
+
       // 添加搜索结果统计到顶部
       addSearchStats(0, searchQuery);
     } else {
       // 无数据
-      itemList.innerHTML = '<div class="empty-state">暂无数据，点击下方按钮添加</div>';
+      itemList.innerHTML = '<div class="empty-state">暂无数据</div>';
     }
     return;
   }
-  
+
   itemList.innerHTML = '';
-  
+
   // 如果有搜索词，显示搜索结果统计
   if (searchQuery) {
     addSearchStats(items.length, searchQuery);
   }
-  
+
+  items.sort((a, b) => a.order - b.order);
   items.forEach((item, index) => {
     const itemElement = createItemElement(item, index, searchQuery);
     itemList.appendChild(itemElement);
@@ -168,11 +238,11 @@ function addSearchStats(count, searchQuery) {
   const itemList = document.getElementById('item-list');
   const statsElement = document.createElement('div');
   statsElement.className = 'search-stats';
-  
+
   if (count === 0) {
     statsElement.textContent = `未找到匹配"${searchQuery}"的二维码`;
   }
-  
+
   itemList.insertBefore(statsElement, itemList.firstChild);
 }
 
@@ -180,6 +250,8 @@ function addSearchStats(count, searchQuery) {
 function createItemElement(item, index, searchQuery = '') {
   const itemDiv = document.createElement('div');
   itemDiv.className = 'item';
+  itemDiv.draggable = true;
+  itemDiv.dataset.order = item.order;
   itemDiv.dataset.index = index;
 
   const hasContent = item.content && item.content.trim() !== '';
@@ -270,15 +342,15 @@ function createItemElement(item, index, searchQuery = '') {
   });
 
   // 备注输入变化时保存并重新搜索
-  noteTextarea.addEventListener('input', function() {
+  noteTextarea.addEventListener('input', function () {
     // 先保存
     saveItems();
-    
+
     // 更新全局数据
-    chrome.storage.local.get(['qrItems'], function(result) {
+    chrome.storage.local.get(['qrItems'], function (result) {
       allItems = result.qrItems || [];
       allItems.sort((a, b) => b.time - a.time);
-      
+
       // 如果当前有搜索词，重新执行搜索
       if (currentSearchQuery) {
         const filteredItems = filterItemsBySearch(allItems, currentSearchQuery);
@@ -288,7 +360,7 @@ function createItemElement(item, index, searchQuery = '') {
   });
 
   // 备注失焦时保存
-  noteTextarea.addEventListener('blur', function() {
+  noteTextarea.addEventListener('blur', function () {
     saveItems();
   });
 
@@ -314,6 +386,13 @@ function createItemElement(item, index, searchQuery = '') {
   topBtn.addEventListener('click', function () {
     moveItemToTop(index);
   });
+
+  // 添加拖曳事件监听器
+  itemDiv.addEventListener('dragstart', (e) => handleDragStart(e, index));
+  itemDiv.addEventListener('dragover', (e) => handleDragOver(e, index));
+  itemDiv.addEventListener('dragleave', handleDragLeave);
+  itemDiv.addEventListener('drop', (e) => handleDrop(e, index));
+  itemDiv.addEventListener('dragend', handleDragEnd);
 
   // 遮挡切换按钮
   const toggleMaskBtn = itemDiv.querySelector('.qr-toggle-mask');
@@ -343,18 +422,50 @@ function toggleMaskState(index, itemDiv) {
       // 切换遮挡状态
       const newMaskedState = !items[index].masked;
       items[index].masked = newMaskedState;
-      
-      chrome.storage.local.set({ qrItems: items }, function() {
+
+      chrome.storage.local.set({ qrItems: items }, function () {
         // 更新全局数据
         allItems = items;
         allItems.sort((a, b) => b.time - a.time);
-        
+
         // 更新UI
         updateMaskUI(itemDiv, newMaskedState);
         // 确保保存状态
         saveItems();
       });
     }
+  });
+}
+
+// sidepanel.js - 添加 moveItem 函数
+function moveItem(fromIndex, toIndex) {
+  chrome.storage.local.get(['qrItems'], function (result) {
+    let items = result.qrItems || [];
+    // 确保 items 按 order 排序
+    items.sort((a, b) => a.order - b.order);
+    // 获取要移动的项目
+    const itemToMove = items[fromIndex];
+    // 移除该项目
+    items.splice(fromIndex, 1);
+    // 插入到新位置
+    items.splice(toIndex, 0, itemToMove);
+    // 重新分配 order 值（0 到 n-1）
+    items.forEach((item, index) => {
+      item.order = index;
+    });
+
+    // 保存
+    chrome.storage.local.set({ qrItems: items }, function () {
+      allItems = items;
+
+      // 重新渲染
+      if (currentSearchQuery) {
+        const filteredItems = filterItemsBySearch(allItems, currentSearchQuery);
+        renderItems(filteredItems, currentSearchQuery);
+      } else {
+        renderItems(allItems);
+      }
+    });
   });
 }
 
@@ -414,7 +525,7 @@ function updateQRCode(itemDiv, index, type) {
       const currentItem = items[index];
       // 确保正确处理 undefined 状态
       const isMasked = currentItem ? (currentItem.masked !== undefined ? currentItem.masked : false) : false;
-      
+
       // 创建二维码包装器
       const qrWrapper = document.createElement('div');
       qrWrapper.className = `qr-code-wrapper ${isMasked ? 'masked' : ''}`;
@@ -527,7 +638,7 @@ function updateItemType(index, type) {
     if (items[index]) {
       items[index].type = type;
       chrome.storage.local.set({ qrItems: items });
-      
+
       // 更新全局数据
       allItems = items;
       allItems.sort((a, b) => b.time - a.time);
@@ -541,7 +652,7 @@ function syncMaskState() {
   itemElements.forEach((itemElement, index) => {
     const qrWrapper = itemElement.querySelector('.qr-code-wrapper');
     if (qrWrapper) {
-      chrome.storage.local.get(['qrItems'], function(result) {
+      chrome.storage.local.get(['qrItems'], function (result) {
         const items = result.qrItems || [];
         if (items[index]) {
           const isMasked = items[index].masked;
@@ -555,20 +666,29 @@ function syncMaskState() {
 // 添加新项目
 function addNewItem() {
   chrome.storage.local.get(['qrItems'], function (result) {
-    const items = result.qrItems || [];
+    let items = result.qrItems || [];
+
+    // 确保 items 按 order 排序
+    items.sort((a, b) => a.order - b.order);
+
+    // 将所有现有项目的 order 加 1，为新项目腾出位置 0
+    items.forEach(item => {
+      item.order += 1;
+    });
+
     const newItem = {
       type: 0,
       content: '',
       note: '',
-      time: Date.now(),
+      order: 0, // 新项目在顶部
+      masked: false
     };
+
     items.unshift(newItem);
+
     chrome.storage.local.set({ qrItems: items }, function () {
-      // 更新全局数据
       allItems = items;
-      allItems.sort((a, b) => b.time - a.time);
-      
-      // 重新加载并应用当前搜索
+
       if (currentSearchQuery) {
         const filteredItems = filterItemsBySearch(allItems, currentSearchQuery);
         renderItems(filteredItems, currentSearchQuery);
@@ -582,14 +702,23 @@ function addNewItem() {
 // 删除项目
 function deleteItem(index) {
   chrome.storage.local.get(['qrItems'], function (result) {
-    const items = result.qrItems || [];
+    let items = result.qrItems || [];
+
+    // 确保 items 按 order 排序
+    items.sort((a, b) => a.order - b.order);
+    const deletedOrder = items[index].order;
+
+    // 删除项目
     items.splice(index, 1);
+    items.forEach(item => {
+      if (item.order > deletedOrder) {
+        item.order -= 1;
+      }
+    });
+
     chrome.storage.local.set({ qrItems: items }, function () {
-      // 更新全局数据
       allItems = items;
-      allItems.sort((a, b) => b.time - a.time);
-      
-      // 重新加载并应用当前搜索
+
       if (currentSearchQuery) {
         const filteredItems = filterItemsBySearch(allItems, currentSearchQuery);
         renderItems(filteredItems, currentSearchQuery);
@@ -603,18 +732,27 @@ function deleteItem(index) {
 // 置顶项目
 function moveItemToTop(index) {
   chrome.storage.local.get(['qrItems'], function (result) {
-    const items = result.qrItems || [];
+    let items = result.qrItems || [];
+    // 确保 items 按 order 排序
+    items.sort((a, b) => a.order - b.order);
     if (index > 0) {
       const item = items[index];
-      items.splice(index, 1);
-      items.unshift(item);
-      items[0].time = Date.now();
+      // 将 order 小于当前项目的项目 order 加 1
+      items.forEach(it => {
+        if (it.order < item.order) {
+          it.order += 1;
+        }
+      });
+
+      // 将当前项目移到顶部（order = 0）
+      item.order = 0;
+
+      // 重新按 order 排序
+      items.sort((a, b) => a.order - b.order);
+
       chrome.storage.local.set({ qrItems: items }, function () {
-        // 更新全局数据
         allItems = items;
-        allItems.sort((a, b) => b.time - a.time);
-        
-        // 重新加载并应用当前搜索
+
         if (currentSearchQuery) {
           const filteredItems = filterItemsBySearch(allItems, currentSearchQuery);
           renderItems(filteredItems, currentSearchQuery);
@@ -630,28 +768,26 @@ function moveItemToTop(index) {
 function saveItems() {
   const itemElements = document.querySelectorAll('.item');
   const items = [];
+
   itemElements.forEach((itemElement, index) => {
     const textInput = itemElement.querySelector('.text-input');
     const noteTextarea = itemElement.querySelector('.note-textarea');
     const checkedRadio = itemElement.querySelector('input[type="radio"]:checked');
     const qrWrapper = itemElement.querySelector('.qr-code-wrapper');
-    
-    // 通过 CSS 类名判断遮挡状态，而不是按钮文本
+
     const isMasked = qrWrapper ? qrWrapper.classList.contains('masked') : false;
-    
+
     items.push({
       type: parseInt(checkedRadio.value),
       content: textInput.value,
       note: noteTextarea ? noteTextarea.value : '',
-      time: Date.now(),
+      order: index, // 使用当前索引作为 order
       masked: isMasked
     });
   });
-  
-  // 按时间倒序
-  items.sort((a, b) => b.time - a.time);
+
+  // 按 order 排序
+  items.sort((a, b) => a.order - b.order);
   chrome.storage.local.set({ qrItems: items });
-  
-  // 更新全局数据
   allItems = items;
 }
