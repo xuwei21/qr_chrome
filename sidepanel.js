@@ -26,18 +26,18 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 // 拖曳事件处理函数
-function handleDragStart(e, index) {
-  dragStartIndex = index;
+function handleDragStart(e, order) {
+  dragStartIndex = order;
   isDragging = true;
   e.target.classList.add('dragging');
-  e.dataTransfer.setData('text/plain', index);
+  e.dataTransfer.setData('text/plain', order);
   e.dataTransfer.effectAllowed = 'move';
 }
 
-function handleDragOver(e, index) {
+function handleDragOver(e, order) {
   e.preventDefault();
-  if (isDragging && index !== dragStartIndex) {
-    dragOverIndex = index;
+  if (isDragging && order !== dragStartIndex) {
+    dragOverIndex = order;
     e.currentTarget.classList.add('drag-over');
   }
 }
@@ -46,12 +46,12 @@ function handleDragLeave(e) {
   e.currentTarget.classList.remove('drag-over');
 }
 
-function handleDrop(e, index) {
+function handleDrop(e, order) {
   e.preventDefault();
   e.currentTarget.classList.remove('drag-over');
 
-  if (dragStartIndex !== -1 && dragStartIndex !== index) {
-    moveItem(dragStartIndex, index);
+  if (dragStartIndex !== -1 && dragStartIndex !== order) {
+    moveItem(dragStartIndex, order);
   }
 
   dragStartIndex = -1;
@@ -273,13 +273,13 @@ function createItemElement(item, index, searchQuery = '') {
     <div class="item-header">
       <div class="radio-group">
         <label>
-          <input type="radio" name="type-${index}" value="0" ${item.type === 0 ? 'checked' : ''}> 稿件
+          <input type="radio" name="type-${item.order}" value="0" ${item.type === 0 ? 'checked' : ''}> 稿件
         </label>
         <label>
-          <input type="radio" name="type-${index}" value="1" ${item.type === 1 ? 'checked' : ''}> Mid
+          <input type="radio" name="type-${item.order}" value="1" ${item.type === 1 ? 'checked' : ''}> Mid
         </label>
         <label>
-          <input type="radio" name="type-${index}" value="2" ${item.type === 2 ? 'checked' : ''}> 自定义
+          <input type="radio" name="type-${item.order}" value="2" ${item.type === 2 ? 'checked' : ''}> 自定义
         </label>
       </div>
       <div class="item-actions">
@@ -295,7 +295,7 @@ function createItemElement(item, index, searchQuery = '') {
   <div class="qr-container ${hasContent ? 'has-qr' : ''}">
     ${hasContent ?
       `<div class="qr-code-wrapper ${maskedClass}">
-   <div class="qr-code" id="qr-code-${index}"></div>
+   <div class="qr-code" id="qr-code-${item.order}"></div>
    <div class="qr-mask">
      <span>已遮挡</span>
    </div>
@@ -318,7 +318,7 @@ function createItemElement(item, index, searchQuery = '') {
     const checkedRadio = itemDiv.querySelector('input[type="radio"]:checked');
     const currentType = parseInt(checkedRadio.value);
     if (content) {
-      updateQRCode(itemDiv, index, currentType);
+      updateQRCode(itemDiv, item.order, currentType);
       qrContainer.classList.add('has-qr');
       noteTextarea.classList.add('show');
     } else {
@@ -336,7 +336,7 @@ function createItemElement(item, index, searchQuery = '') {
     const currentType = parseInt(checkedRadio.value);
     if (content) {
       formatTextInput(textInput, currentType);
-      updateQRCode(itemDiv, index, currentType);
+      updateQRCode(itemDiv, item.order, currentType);
       saveItems();
     }
   });
@@ -372,26 +372,28 @@ function createItemElement(item, index, searchQuery = '') {
       noteTextarea.value = '';
       qrContainer.innerHTML = '';
       qrContainer.classList.remove('has-qr');
-      updateItemType(index, newType);
+      updateItemType(item.order, newType);
       saveItems();
     });
   });
 
   // 删除
   deleteBtn.addEventListener('click', function () {
-    deleteItem(index);
+    const order = parseInt(itemDiv.dataset.order);
+    deleteItem(order);
   });
 
   // 置顶
   topBtn.addEventListener('click', function () {
-    moveItemToTop(index);
+    const order = parseInt(itemDiv.dataset.order);
+    moveItemToTop(order);
   });
 
   // 添加拖曳事件监听器
-  itemDiv.addEventListener('dragstart', (e) => handleDragStart(e, index));
-  itemDiv.addEventListener('dragover', (e) => handleDragOver(e, index));
+  itemDiv.addEventListener('dragstart', (e) => handleDragStart(e, item.order));
+  itemDiv.addEventListener('dragover', (e) => handleDragOver(e, item.order));
   itemDiv.addEventListener('dragleave', handleDragLeave);
-  itemDiv.addEventListener('drop', (e) => handleDrop(e, index));
+  itemDiv.addEventListener('drop', (e) => handleDrop(e, item.order));
   itemDiv.addEventListener('dragend', handleDragEnd);
 
   // 遮挡切换按钮
@@ -399,14 +401,15 @@ function createItemElement(item, index, searchQuery = '') {
   if (toggleMaskBtn) {
     toggleMaskBtn.addEventListener('click', function (e) {
       e.stopPropagation(); // 防止事件冒泡
-      toggleMaskState(index, itemDiv);
+      const order = parseInt(itemDiv.dataset.order);
+      toggleMaskState(order, itemDiv);
     });
   }
 
   // 初始生成二维码（如果有内容）
   if (hasContent) {
     noteTextarea.classList.add('show');
-    updateQRCode(itemDiv, index, item.type);
+    updateQRCode(itemDiv, item.order, item.type);
   } else {
     noteTextarea.classList.remove('show');
   }
@@ -415,56 +418,60 @@ function createItemElement(item, index, searchQuery = '') {
 }
 
 // 切换二维码遮挡状态
-function toggleMaskState(index, itemDiv) {
+function toggleMaskState(order, itemDiv) {
   chrome.storage.local.get(['qrItems'], function (result) {
     const items = result.qrItems || [];
-    if (items[index]) {
-      // 切换遮挡状态
-      const newMaskedState = !items[index].masked;
-      items[index].masked = newMaskedState;
+    
+    // 按 order 排序
+    items.sort((a, b) => a.order - b.order);
+    
+    // 找到目标项目
+    const targetIndex = items.findIndex(item => item.order === order);
+    if (targetIndex === -1) return;
+    
+    // 切换遮挡状态
+    const newMaskedState = !items[targetIndex].masked;
+    items[targetIndex].masked = newMaskedState;
 
-      chrome.storage.local.set({ qrItems: items }, function () {
-        // 更新全局数据
-        allItems = items;
-        allItems.sort((a, b) => b.time - a.time);
+    chrome.storage.local.set({ qrItems: items }, function () {
+      // 更新全局数据
+      allItems = items;
 
-        // 更新UI
-        updateMaskUI(itemDiv, newMaskedState);
-        // 确保保存状态
-        saveItems();
-      });
-    }
+      // 更新UI
+      updateMaskUI(itemDiv, newMaskedState);
+      // 确保保存状态
+      saveItems();
+    });
   });
 }
 
-// sidepanel.js - 添加 moveItem 函数
-function moveItem(fromIndex, toIndex) {
+// 移动项目（拖拽）
+function moveItem(fromOrder, toOrder) {
   chrome.storage.local.get(['qrItems'], function (result) {
     let items = result.qrItems || [];
-    // 确保 items 按 order 排序
+    
+    // 按 order 排序
     items.sort((a, b) => a.order - b.order);
-    // 获取要移动的项目
-    const itemToMove = items[fromIndex];
-    // 移除该项目
-    items.splice(fromIndex, 1);
-    // 插入到新位置
+    
+    // 找到源项目和目标位置
+    const fromIndex = items.findIndex(item => item.order === fromOrder);
+    const toIndex = items.findIndex(item => item.order === toOrder);
+    
+    if (fromIndex === -1 || toIndex === -1) return;
+    
+    // 移动项目
+    const [itemToMove] = items.splice(fromIndex, 1);
     items.splice(toIndex, 0, itemToMove);
-    // 重新分配 order 值（0 到 n-1）
+    
+    // 重新分配 order，确保从0开始连续
     items.forEach((item, index) => {
       item.order = index;
     });
-
-    // 保存
+    
+    // 保存并重新渲染
     chrome.storage.local.set({ qrItems: items }, function () {
       allItems = items;
-
-      // 重新渲染
-      if (currentSearchQuery) {
-        const filteredItems = filterItemsBySearch(allItems, currentSearchQuery);
-        renderItems(filteredItems, currentSearchQuery);
-      } else {
-        renderItems(allItems);
-      }
+      refreshDisplay();
     });
   });
 }
@@ -499,7 +506,7 @@ function formatTextInput(textInput, type) {
 }
 
 // updateQRCode 函数
-function updateQRCode(itemDiv, index, type) {
+function updateQRCode(itemDiv, order, type) {
   const textInput = itemDiv.querySelector('.text-input');
   const qrContainer = itemDiv.querySelector('.qr-container');
   const noteTextarea = itemDiv.querySelector('.note-textarea');
@@ -522,7 +529,11 @@ function updateQRCode(itemDiv, index, type) {
     // 获取当前的遮挡状态
     chrome.storage.local.get(['qrItems'], function (result) {
       const items = result.qrItems || [];
-      const currentItem = items[index];
+      items.sort((a, b) => a.order - b.order);
+      
+      const targetIndex = items.findIndex(item => item.order === order);
+      const currentItem = targetIndex !== -1 ? items[targetIndex] : null;
+      
       // 确保正确处理 undefined 状态
       const isMasked = currentItem ? (currentItem.masked !== undefined ? currentItem.masked : false) : false;
 
@@ -532,7 +543,7 @@ function updateQRCode(itemDiv, index, type) {
 
       const qrCodeDiv = document.createElement('div');
       qrCodeDiv.className = 'qr-code';
-      qrCodeDiv.id = `qr-code-${index}`;
+      qrCodeDiv.id = `qr-code-${order}`;
       qrWrapper.appendChild(qrCodeDiv);
 
       // 添加遮挡层
@@ -547,7 +558,7 @@ function updateQRCode(itemDiv, index, type) {
       toggleBtn.textContent = isMasked ? '取消遮挡' : '遮挡';
       toggleBtn.addEventListener('click', function (e) {
         e.stopPropagation();
-        toggleMaskState(index, itemDiv);
+        toggleMaskState(order, itemDiv);
       });
       qrWrapper.appendChild(toggleBtn);
 
@@ -555,7 +566,7 @@ function updateQRCode(itemDiv, index, type) {
       qrContainer.classList.add('has-qr');
 
       // 生成二维码
-      generateQRCodeByAPI(qrContent, qrCodeDiv, index);
+      generateQRCodeByAPI(qrContent, qrCodeDiv, order);
     });
   } else {
     noteTextarea.classList.remove('show');
@@ -564,7 +575,7 @@ function updateQRCode(itemDiv, index, type) {
 }
 
 // 添加重试机制
-function retryGenerateQRCode(content, container, index, retryCount = 0) {
+function retryGenerateQRCode(content, container, order, retryCount = 0) {
   const maxRetries = 3;
 
   if (retryCount >= maxRetries) {
@@ -578,12 +589,12 @@ function retryGenerateQRCode(content, container, index, retryCount = 0) {
 
   // 延迟重试，避免频繁请求
   setTimeout(() => {
-    generateQRCodeByAPI(content, container, index);
+    generateQRCodeByAPI(content, container, order);
   }, 1000 * (retryCount + 1));
 }
 
 // 通过API生成二维码
-function generateQRCodeByAPI(content, container, index) {
+function generateQRCodeByAPI(content, container, order) {
   // 检查网络连接
   if (!navigator.onLine) {
     const loadingEl = container.querySelector('.qr-loading');
@@ -593,6 +604,7 @@ function generateQRCodeByAPI(content, container, index) {
     }
     return;
   }
+  
   // 对内容进行URL编码
   const encodedContent = encodeURIComponent(content);
   const apiUrl = `https://api.2dcode.biz/v1/create-qr-code?data=${encodedContent}&size=240x240`;
@@ -624,7 +636,7 @@ function generateQRCodeByAPI(content, container, index) {
     if (loadingEl) {
       loadingEl.textContent = `重试中... (${retryCount + 1}/3)`;
     }
-    retryGenerateQRCode(content, container, index, retryCount + 1);
+    retryGenerateQRCode(content, container, order, retryCount + 1);
   };
 
   // 设置图片源
@@ -632,30 +644,38 @@ function generateQRCodeByAPI(content, container, index) {
 }
 
 // 更新项目类型
-function updateItemType(index, type) {
+function updateItemType(order, type) {
   chrome.storage.local.get(['qrItems'], function (result) {
     const items = result.qrItems || [];
-    if (items[index]) {
-      items[index].type = type;
-      chrome.storage.local.set({ qrItems: items });
+    
+    // 按 order 排序
+    items.sort((a, b) => a.order - b.order);
+    
+    const targetIndex = items.findIndex(item => item.order === order);
+    if (targetIndex === -1) return;
+    
+    items[targetIndex].type = type;
+    chrome.storage.local.set({ qrItems: items });
 
-      // 更新全局数据
-      allItems = items;
-      allItems.sort((a, b) => b.time - a.time);
-    }
+    // 更新全局数据
+    allItems = items;
   });
 }
 
 // 添加状态同步函数
 function syncMaskState() {
   const itemElements = document.querySelectorAll('.item');
-  itemElements.forEach((itemElement, index) => {
+  itemElements.forEach((itemElement) => {
+    const order = parseInt(itemElement.dataset.order);
     const qrWrapper = itemElement.querySelector('.qr-code-wrapper');
     if (qrWrapper) {
       chrome.storage.local.get(['qrItems'], function (result) {
         const items = result.qrItems || [];
-        if (items[index]) {
-          const isMasked = items[index].masked;
+        items.sort((a, b) => a.order - b.order);
+        
+        const targetIndex = items.findIndex(item => item.order === order);
+        if (targetIndex !== -1) {
+          const isMasked = items[targetIndex].masked;
           updateMaskUI(itemElement, isMasked);
         }
       });
@@ -671,7 +691,7 @@ function addNewItem() {
     // 确保 items 按 order 排序
     items.sort((a, b) => a.order - b.order);
 
-    // 将所有现有项目的 order 加 1，为新项目腾出位置 0
+    // 所有现有项目 order 加 1
     items.forEach(item => {
       item.order += 1;
     });
@@ -685,13 +705,16 @@ function addNewItem() {
     };
 
     items.unshift(newItem);
+    
+    // 重新排序（虽然顺序应该已经是正确的）
+    items.sort((a, b) => a.order - b.order);
 
     chrome.storage.local.set({ qrItems: items }, function () {
       allItems = items;
 
+      // 如果当前在搜索状态，清除搜索显示新项目
       if (currentSearchQuery) {
-        const filteredItems = filterItemsBySearch(allItems, currentSearchQuery);
-        renderItems(filteredItems, currentSearchQuery);
+        clearSearch();
       } else {
         renderItems(allItems);
       }
@@ -700,67 +723,64 @@ function addNewItem() {
 }
 
 // 删除项目
-function deleteItem(index) {
+function deleteItem(order) {
   chrome.storage.local.get(['qrItems'], function (result) {
     let items = result.qrItems || [];
-
-    // 确保 items 按 order 排序
+    
+    // 按 order 排序
     items.sort((a, b) => a.order - b.order);
-    const deletedOrder = items[index].order;
-
+    
+    // 找到要删除的项目
+    const deleteIndex = items.findIndex(item => item.order === order);
+    if (deleteIndex === -1) return;
+    
     // 删除项目
-    items.splice(index, 1);
-    items.forEach(item => {
-      if (item.order > deletedOrder) {
-        item.order -= 1;
-      }
+    items.splice(deleteIndex, 1);
+    
+    // 重新分配 order，确保从0开始连续
+    items.forEach((item, index) => {
+      item.order = index;
     });
-
+    
+    // 保存并重新渲染
     chrome.storage.local.set({ qrItems: items }, function () {
       allItems = items;
-
-      if (currentSearchQuery) {
-        const filteredItems = filterItemsBySearch(allItems, currentSearchQuery);
-        renderItems(filteredItems, currentSearchQuery);
-      } else {
-        renderItems(allItems);
-      }
+      refreshDisplay();
     });
   });
 }
 
 // 置顶项目
-function moveItemToTop(index) {
+function moveItemToTop(order) {
   chrome.storage.local.get(['qrItems'], function (result) {
     let items = result.qrItems || [];
-    // 确保 items 按 order 排序
+    
+    // 按 order 排序
     items.sort((a, b) => a.order - b.order);
-    if (index > 0) {
-      const item = items[index];
-      // 将 order 小于当前项目的项目 order 加 1
-      items.forEach(it => {
-        if (it.order < item.order) {
-          it.order += 1;
-        }
-      });
-
-      // 将当前项目移到顶部（order = 0）
-      item.order = 0;
-
-      // 重新按 order 排序
-      items.sort((a, b) => a.order - b.order);
-
-      chrome.storage.local.set({ qrItems: items }, function () {
-        allItems = items;
-
-        if (currentSearchQuery) {
-          const filteredItems = filterItemsBySearch(allItems, currentSearchQuery);
-          renderItems(filteredItems, currentSearchQuery);
-        } else {
-          renderItems(allItems);
-        }
-      });
-    }
+    
+    // 找到目标项目
+    const targetIndex = items.findIndex(item => item.order === order);
+    if (targetIndex === -1) return;
+    
+    // 提取要置顶的项目
+    const [itemToMove] = items.splice(targetIndex, 1);
+    
+    // 所有项目 order + 1
+    items.forEach(item => {
+      item.order += 1;
+    });
+    
+    // 将目标项目放到顶部，order = 0
+    itemToMove.order = 0;
+    items.unshift(itemToMove);
+    
+    // 重新排序并保存
+    items.sort((a, b) => a.order - b.order);
+    
+    chrome.storage.local.set({ qrItems: items }, function () {
+      allItems = items;
+      refreshDisplay();
+    });
   });
 }
 
@@ -769,19 +789,20 @@ function saveItems() {
   const itemElements = document.querySelectorAll('.item');
   const items = [];
 
-  itemElements.forEach((itemElement, index) => {
+  itemElements.forEach((itemElement) => {
     const textInput = itemElement.querySelector('.text-input');
     const noteTextarea = itemElement.querySelector('.note-textarea');
     const checkedRadio = itemElement.querySelector('input[type="radio"]:checked');
     const qrWrapper = itemElement.querySelector('.qr-code-wrapper');
 
     const isMasked = qrWrapper ? qrWrapper.classList.contains('masked') : false;
+    const order = parseInt(itemElement.dataset.order);
 
     items.push({
       type: parseInt(checkedRadio.value),
       content: textInput.value,
       note: noteTextarea ? noteTextarea.value : '',
-      order: index, // 使用当前索引作为 order
+      order: order,
       masked: isMasked
     });
   });
@@ -790,4 +811,14 @@ function saveItems() {
   items.sort((a, b) => a.order - b.order);
   chrome.storage.local.set({ qrItems: items });
   allItems = items;
+}
+
+// 统一的显示刷新函数
+function refreshDisplay() {
+  if (currentSearchQuery) {
+    const filteredItems = filterItemsBySearch(allItems, currentSearchQuery);
+    renderItems(filteredItems, currentSearchQuery);
+  } else {
+    renderItems(allItems);
+  }
 }
